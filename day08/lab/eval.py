@@ -15,6 +15,24 @@ Definition of Done Sprint 4:
 A/B Rule (từ slide):
   Chỉ đổi MỘT biến mỗi lần để biết điều gì thực sự tạo ra cải thiện.
   Đổi đồng thời chunking + hybrid + rerank + prompt = không biết biến nào có tác dụng.
+
+Evaluation Method: LLM-as-Judge
+================================
+Tất cả 4 metrics đều được chấm tự động bằng LLM (gpt-4o-mini, temperature=0).
+Mỗi câu hỏi gọi 4 lần LLM judge riêng biệt — một lần cho mỗi metric.
+
+  score_faithfulness()    — LLM chấm: answer có bám context không? (1-5)
+  score_answer_relevance() — LLM chấm: answer có trả lời đúng câu hỏi không? (1-5)
+  score_context_recall()  — Rule-based: expected source có trong retrieved chunks không?
+  score_completeness()    — LLM chấm: answer có đủ key points so với expected không? (1-5)
+
+Prompt judge format (JSON output):
+  {"score": <int 1-5>, "reason": "<one sentence>"}
+
+Lý do chọn LLM-as-Judge thay vì chấm thủ công:
+  - Scalable: 10 câu × 5 configs × 4 metrics = 200 evaluations, không thể chấm tay
+  - Consistent: temperature=0 cho output ổn định
+  - Explainable: mỗi score kèm reason để debug
 """
 
 import json

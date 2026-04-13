@@ -27,11 +27,12 @@ Hệ thống trợ lý nội bộ cho khối CS và IT Helpdesk, cho phép nhân
 ### Tài liệu được index
 | File | Nguồn | Department | Số chunk |
 |------|-------|-----------|---------|
-| `policy_refund_v4.txt` | policy/refund-v4.pdf | CS | TODO |
-| `sla_p1_2026.txt` | support/sla-p1-2026.pdf | IT | TODO |
-| `access_control_sop.txt` | it/access-control-sop.md | IT Security | TODO |
-| `it_helpdesk_faq.txt` | support/helpdesk-faq.md | IT | TODO |
-| `hr_leave_policy.txt` | hr/leave-policy-2026.pdf | HR | TODO |
+| `policy_refund_v4.txt` | policy/refund-v4.pdf | CS | 6 |
+| `sla_p1_2026.txt` | support/sla-p1-2026.pdf | IT | 5 |
+| `access_control_sop.txt` | it/access-control-sop.md | IT Security | 7 |
+| `it_helpdesk_faq.txt` | support/helpdesk-faq.md | IT | 6 |
+| `hr_leave_policy.txt` | hr/leave-policy-2026.pdf | HR | 5 |
+| **Tổng** | | | **29** |
 
 ### Quyết định chunking
 | Tham số | Giá trị | Lý do |
@@ -117,21 +118,23 @@ Answer:
 
 ---
 
-## 6. Diagram (tùy chọn)
-
-> TODO: Vẽ sơ đồ pipeline nếu có thời gian. Có thể dùng Mermaid hoặc drawio.
+## 6. Diagram
 
 ```mermaid
 graph LR
-    A[User Query] --> B[Query Embedding]
-    B --> C[ChromaDB Vector Search]
-    C --> D[Top-10 Candidates]
-    D --> E{Rerank?}
-    E -->|Yes| F[Cross-Encoder]
-    E -->|No| G[Top-3 Select]
-    F --> G
-    G --> H[Build Context Block]
-    H --> I[Grounded Prompt]
-    I --> J[LLM]
-    J --> K[Answer + Citation]
+    A[User Query] --> B[Query Embedding\ntext-embedding-3-small]
+    B --> C[ChromaDB\nCosine Search top-10]
+    C --> D{Hybrid?}
+    D -->|Yes| E[BM25 Search top-10]
+    D -->|No| F[Top-10 Dense]
+    E --> G[RRF Merge\ndense=0.6 sparse=0.4]
+    G --> H{Rerank?}
+    F --> H
+    H -->|Yes| I[LLM Reranker\nselect top-3]
+    H -->|No| J[Top-3 Select]
+    I --> K[Build Context Block\nsource + section + score]
+    J --> K
+    K --> L[Grounded Prompt v1/v3]
+    L --> M[gpt-4o-mini\ntemp=0]
+    M --> N[Answer + Citation]
 ```

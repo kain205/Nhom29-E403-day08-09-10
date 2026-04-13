@@ -127,13 +127,11 @@ prompt_version = "v3"   # Biến duy nhất thay đổi so với baseline (v1)
 
 ## Tóm tắt học được
 
-> TODO (Sprint 4): Điền sau khi hoàn thành evaluation.
-
 1. **Lỗi phổ biến nhất trong pipeline này là gì?**
-   > _____________
+   > Generation lỗi — cụ thể là abstain không đúng tầng. Baseline prompt v1 không phân biệt được "topic hoàn toàn vắng" (Tier 3) vs "có policy chung nhưng thiếu exception cụ thể" (Tier 2). Kết quả: q09 hedge thay vì abstain sạch, q10 full-abstain thay vì nêu standard policy. Đây là lỗi generation, không phải retrieval — Context Recall đạt 5.00 ngay từ baseline.
 
 2. **Biến nào có tác động lớn nhất tới chất lượng?**
-   > _____________
+   > `prompt_version` — thay đổi từ v1 sang v3 (3-tier abstain logic) cải thiện Completeness từ 3.80 lên 4.80 (+1.00 qua các variant), lớn hơn bất kỳ thay đổi retrieval nào. Hybrid retrieval (Variant 1) thậm chí làm giảm điểm (-0.50 Completeness) vì BM25 gây noise khi corpus đã được dense retrieve tốt.
 
 3. **Nếu có thêm 1 giờ, nhóm sẽ thử gì tiếp theo?**
-   > _____________
+   > Thêm field `aliases` vào metadata ChromaDB để map tên cũ → tên mới (ví dụ: "Approval Matrix for System Access" → access-control-sop.md). q07 là câu duy nhất còn fail ở tất cả variant vì alias bị strip khỏi content khi preprocess — fix ở tầng indexing sẽ giải quyết triệt để hơn query expansion.

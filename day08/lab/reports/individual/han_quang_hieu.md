@@ -42,15 +42,15 @@ Nguyên nhân: dòng `Ghi chú: Tài liệu này trước đây có tên "Approv
 
 ## 4. Phân tích một câu hỏi trong scorecard
 
-**Câu hỏi:** q10 — "Nếu cần hoàn tiền khẩn cấp cho khách hàng VIP, quy trình có khác không?"
+**Câu hỏi:** q06 — "Escalation trong sự cố P1 diễn ra như thế nào?"
 
 **Phân tích:**
 
-Đây là câu hỏi thuộc dạng "Tier 2" — tài liệu có policy tiêu chuẩn nhưng không đề cập exception VIP. Baseline (v1 prompt) trả lời: "Không có thông tin nào... do đó tôi không biết" — đây là full abstain sai, vì tài liệu có đủ thông tin để trả lời phần standard policy. Kết quả: Relevance = 1, Completeness = 2.
+Đây là câu thú vị nhất vì nó phân biệt rõ sự khác biệt giữa dense và hybrid. Baseline (dense + prompt v1) trả lời đúng hoàn toàn: nêu đủ 4 bước escalation, bao gồm "tự động escalate lên Senior Engineer nếu không có phản hồi trong 10 phút" — Completeness = 5/5.
 
-Lỗi nằm ở generation layer, không phải retrieval (Context Recall = 5/5 — đúng doc được retrieve). Prompt v1 không phân biệt được "hoàn toàn không có thông tin" vs "có thông tin tiêu chuẩn nhưng không có exception cụ thể".
+Variant 1 (hybrid) lại fail câu này với Completeness = 1/5. Nguyên nhân: BM25 match từ khóa "escalation" và "P1" trong `access_control_sop.md` Section 4 ("Escalation khi cần thay đổi quyền hệ thống") và đẩy chunk đó lên rank cao qua RRF. Chunk đúng — `sla_p1_2026.txt` Section 2 chứa rule "auto-escalate in 10 min" — bị đẩy xuống ngoài top-3. LLM nhận được context sai và trả lời về quy trình cấp quyền khẩn cấp thay vì SLA escalation.
 
-Variant 3 (prompt v3 với 3-tier logic) fix được: model nêu đúng quy trình tiêu chuẩn 3-5 ngày và ghi rõ "không có tài liệu nào đề cập đến sự khác biệt cho khách hàng VIP". Completeness tăng từ 2 lên 5, Relevance từ 1 lên 3. Đây là minh chứng rõ nhất cho thấy prompt engineering giải quyết đúng loại lỗi này.
+Lỗi nằm ở retrieval layer, không phải generation. Tôi debug bằng `_run_q06.py` — in toàn bộ 10 candidates trước khi chọn top-3 — và xác nhận chunk sai đứng rank 1 trong hybrid. Đây là bằng chứng thực nghiệm rõ nhất cho nguyên tắc: đo Context Recall trước khi tune retrieval. Nếu recall đã tốt, hybrid không thêm giá trị mà còn có thể gây hại.
 
 ---
 
