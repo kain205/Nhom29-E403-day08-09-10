@@ -79,10 +79,31 @@ def _build_context(chunks: list, policy_result: dict) -> str:
             score = chunk.get("score", 0)
             parts.append(f"[{i}] Nguồn: {source} (relevance: {score:.2f})\n{text}")
 
-    if policy_result and policy_result.get("exceptions_found"):
-        parts.append("\n=== POLICY EXCEPTIONS ===")
-        for ex in policy_result["exceptions_found"]:
-            parts.append(f"- {ex.get('rule', '')}")
+    if policy_result:
+        parts.append("\n=== KẾT QUẢ PHÂN TÍCH POLICY ===")
+
+        policy_applies = policy_result.get("policy_applies")
+        if policy_applies is False:
+            parts.append("POLICY TỪ CHỐI: Request này KHÔNG được chấp thuận.")
+            parts.append("Bắt buộc phản ánh kết luận này trong answer. KHÔNG được kết luận ngược lại.")
+        elif policy_applies is True:
+            parts.append("POLICY CHO PHÉP: Request này được chấp thuận theo policy.")
+
+        if policy_result.get("exceptions_found"):
+            parts.append("Lý do từ chối:")
+            for ex in policy_result["exceptions_found"]:
+                parts.append(f"  - {ex.get('rule', '')}")
+
+        if policy_result.get("explanation"):
+            parts.append(f"Giải thích: {policy_result['explanation']}")
+
+        if policy_result.get("policy_version_note"):
+            parts.append(f"Lưu ý version: {policy_result['policy_version_note']}")
+            if policy_applies is None:
+                parts.append("KHÔNG ĐỦ THÔNG TIN: Không có tài liệu của policy version áp dụng → phải nói rõ cần xác nhận thêm.")
+
+        if policy_result.get("ambiguous"):
+            parts.append(f"Lưu ý: {policy_result.get('ambiguous_reason', 'Trường hợp phức tạp, cần xác nhận thêm.')}")
 
     if not parts:
         return "(Không có context)"
@@ -179,7 +200,13 @@ def run(state: dict) -> dict:
         state["sources"] = result["sources"]
         state["confidence"] = result["confidence"]
 
+        # Contract constraint: confidence < 0.4 → set hitl_triggered=True
+        if result["confidence"] < 0.4:
+            state["hitl_triggered"] = True
+            state["history"].append(f"[{WORKER_NAME}] low confidence={result['confidence']} → hitl_triggered=True")
+
         worker_io["output"] = {
+            "answer": result["answer"],
             "answer_length": len(result["answer"]),
             "sources": result["sources"],
             "confidence": result["confidence"],

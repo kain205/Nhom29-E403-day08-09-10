@@ -127,6 +127,11 @@ def supervisor_node(state: AgentState) -> AgentState:
     if risk_high:
         route_reason += f" | risk_high=True (triggered by: {risk_matched})"
 
+    if needs_tool:
+        route_reason += " | mcp=True (worker will call MCP tools)"
+    else:
+        route_reason += " | mcp=False"
+
     state["supervisor_route"] = route
     state["route_reason"] = route_reason
     state["needs_tool"] = needs_tool
@@ -145,7 +150,7 @@ def route_decision(state: AgentState) -> Literal["retrieval_worker", "policy_too
     Trả về tên worker tiếp theo dựa vào supervisor_route trong state.
     Đây là conditional edge của graph.
     """
-    route = state.get("supervisor_route", "retrieval_worker")
+    route = state.get("supervisor_route")
     return route  # type: ignore
 
 

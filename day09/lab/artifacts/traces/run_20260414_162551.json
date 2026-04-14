@@ -1,0 +1,94 @@
+{
+  "task": "Nhân viên vừa vào thử việc (trong probation period) muốn làm remote vì lý do cá nhân. Điều kiện là gì?",
+  "route_reason": "default: no specific keyword matched, route to retrieval | mcp=False",
+  "risk_high": false,
+  "needs_tool": false,
+  "hitl_triggered": false,
+  "retrieved_chunks": [
+    {
+      "text": "iện làm thêm:\nLàm thêm giờ phải được Line Manager phê duyệt trước bằng văn bản.\n\n3.2 Hệ số lương làm thêm:\n- Ngày thường: 150% lương giờ tiêu chuẩn.\n- Ngày cuối tuần: 200% lương giờ tiêu chuẩn.\n- Ngày lễ: 300% lương giờ tiêu chuẩn.\n\n=== Phần 4: Remote work policy ===\n\n4.1 Điều kiện remote:\n- Nhân viên sau probation period có thể làm remote tối đa 2 ngày/tuần.\n- Team Lead phải phê duyệt lịch remote",
+      "source": "hr_leave_policy.txt",
+      "score": 0.6245,
+      "metadata": {
+        "source": "hr_leave_policy.txt",
+        "chunk_index": 4
+      }
+    },
+    {
+      "text": "e tối đa 2 ngày/tuần.\n- Team Lead phải phê duyệt lịch remote qua HR Portal.\n- Ngày onsite bắt buộc: Thứ 3 và Thứ 5 theo lịch team.\n\n4.2 Yêu cầu kỹ thuật khi remote:\n- Kết nối VPN bắt buộc khi làm việc với hệ thống nội bộ.\n- Camera bật trong các cuộc họp team.\n\n=== Phần 5: Liên hệ HR ===\nEmail: hr@company.internal\nHotline: ext. 2000\nHR Portal: https://hr.company.internal\nGiờ làm việc: Thứ 2 - Thứ 6",
+      "source": "hr_leave_policy.txt",
+      "score": 0.5595,
+      "metadata": {
+        "source": "hr_leave_policy.txt",
+        "chunk_index": 5
+      }
+    },
+    {
+      "text": " nhất 3 ngày làm việc trước ngày nghỉ.\nBước 2: Line Manager phê duyệt hoặc từ chối trong vòng 1 ngày làm việc.\nBước 3: Nhân viên nhận thông báo qua email sau khi được phê duyệt.\n\nTrường hợp khẩn cấp: Có thể gửi yêu cầu muộn hơn nhưng phải được Line Manager đồng ý qua tin nhắn trực tiếp.\n\n=== Phần 3: Chính sách làm thêm giờ ===\n\n3.1 Điều kiện làm thêm:\nLàm thêm giờ phải được Line Manager phê duyệt ",
+      "source": "hr_leave_policy.txt",
+      "score": 0.4822,
+      "metadata": {
+        "chunk_index": 3,
+        "source": "hr_leave_policy.txt"
+      }
+    }
+  ],
+  "retrieved_sources": [
+    "hr_leave_policy.txt"
+  ],
+  "policy_result": {},
+  "mcp_tools_used": [],
+  "final_answer": "Nhân viên trong thời gian thử việc (probation period) không đủ điều kiện để làm remote. Chính sách remote chỉ áp dụng cho nhân viên sau khi hoàn thành probation period, với điều kiện là Team Lead phải phê duyệt lịch remote qua HR Portal. [1]",
+  "sources": [
+    "hr_leave_policy.txt"
+  ],
+  "confidence": 0.56,
+  "history": [
+    "[supervisor] received task: Nhân viên vừa vào thử việc (trong probation period) muốn làm remote vì lý do cá ",
+    "[supervisor] route=retrieval_worker reason=default: no specific keyword matched, route to retrieval | mcp=False",
+    "[retrieval_worker] retrieved 3 chunks from ['hr_leave_policy.txt']",
+    "[synthesis_worker] answer generated, confidence=0.56, sources=['hr_leave_policy.txt']",
+    "[graph] completed in 2377ms"
+  ],
+  "workers_called": [
+    "retrieval_worker",
+    "synthesis_worker"
+  ],
+  "supervisor_route": "retrieval_worker",
+  "latency_ms": 2377,
+  "run_id": "run_20260414_162551",
+  "worker_io_logs": [
+    {
+      "worker": "retrieval_worker",
+      "input": {
+        "task": "Nhân viên vừa vào thử việc (trong probation period) muốn làm remote vì lý do cá nhân. Điều kiện là gì?",
+        "top_k": 3
+      },
+      "output": {
+        "chunks_count": 3,
+        "sources": [
+          "hr_leave_policy.txt"
+        ]
+      },
+      "error": null
+    },
+    {
+      "worker": "synthesis_worker",
+      "input": {
+        "task": "Nhân viên vừa vào thử việc (trong probation period) muốn làm remote vì lý do cá nhân. Điều kiện là gì?",
+        "chunks_count": 3,
+        "has_policy": false
+      },
+      "output": {
+        "answer": "Nhân viên trong thời gian thử việc (probation period) không đủ điều kiện để làm remote. Chính sách remote chỉ áp dụng cho nhân viên sau khi hoàn thành probation period, với điều kiện là Team Lead phải phê duyệt lịch remote qua HR Portal. [1]",
+        "answer_length": 241,
+        "sources": [
+          "hr_leave_policy.txt"
+        ],
+        "confidence": 0.56
+      },
+      "error": null
+    }
+  ],
+  "question_id": "q14"
+}
