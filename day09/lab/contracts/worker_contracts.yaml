@@ -96,8 +96,8 @@ retrieval_worker:
     - "Score phải là float trong khoảng [0, 1]"
     - "Stateless: không đọc hoặc ghi state ngoài những gì được khai báo ở trên"
   actual_implementation:
-    status: "TODO Sprint 2"  # Update to "done" khi xong
-    notes: ""
+    status: "done"
+    notes: "OpenAI text-embedding-3-small, ChromaDB cosine, top_k=3"
 
 # ─────────────────────────────────────────────
 # Policy Tool Worker
@@ -166,8 +166,8 @@ policy_tool_worker:
     - "Phải ghi tên MCP tool đã gọi vào mcp_tools_used"
     - "Không được tự bịa policy rules không có trong tài liệu"
   actual_implementation:
-    status: "TODO Sprint 2"
-    notes: ""
+    status: "done"
+    notes: "Rule-based exception detection: flash_sale, digital_product, activated_product, temporal_scoping"
 
 # ─────────────────────────────────────────────
 # Synthesis Worker
@@ -214,8 +214,8 @@ synthesis_worker:
     - "confidence < 0.4 → khuyến khích set hitl_triggered=True"
     - "Không được dùng kiến thức ngoài context được cung cấp"
   actual_implementation:
-    status: "TODO Sprint 2"
-    notes: ""
+    status: "done"
+    notes: "OpenAI GPT-4o-mini, temperature=0.1, confidence từ chunk scores"
 
 # ─────────────────────────────────────────────
 # MCP Server
