@@ -285,16 +285,23 @@ print(result["retrieved_chunks"])
 
 ---
 
-## Phân vai (Giao ngay phút đầu)
+## Phân vai
 
-| Vai trò | Trách nhiệm chính | Sprint lead |
-|---------|------------------|------------|
-| **Supervisor Owner** | graph.py, routing logic, state management | 1 |
-| **Worker Owner** | retrieval.py, policy_tool.py, synthesis.py, contracts | 2 |
-| **MCP Owner** | mcp_server.py, MCP integration trong policy_tool | 3 |
-| **Trace & Docs Owner** | eval_trace.py, 3 doc templates, group_report | 4 |
+| Vai trò | Trách nhiệm chính | Sprint lead | Thành viên |
+|---------|------------------|------------|------------|
+| **Supervisor Owner** | graph.py, routing logic, state management | 1 | Nguyễn Bình Thành |
+| **Worker Owner** | retrieval.py, policy_tool.py, synthesis.py, contracts | 2 | Nguyễn Bình Thành |
+| **MCP Owner** | mcp_server.py, MCP integration trong policy_tool | 3 | Hàn Quang Hiếu |
+| **Trace & Docs Owner** | eval_trace.py, 3 doc templates, group_report | 4 | Hàn Quang Hiếu |
 
-> Một người có thể giữ nhiều vai nếu nhóm < 4 người. Mỗi vai phải có **ít nhất 1 người** khai báo và chứng minh được.
+---
+
+## Phân công thực tế
+
+| Thành viên | Đóng góp |
+|------------|----------|
+| **Nguyễn Bình Thành** | Sprint 1+2: implement supervisor routing (keyword-based, route_reason, risk_high flag); wire up 3 worker nodes trong graph.py; implement retrieval worker (OpenAI embeddings, ChromaDB dense search); fix embedding pipeline (load_dotenv, OpenAI-first fallback); build_index.py (chunk 400/overlap 60); cleanup TODOs và DoD checklist |
+| **Hàn Quang Hiếu** | Sprint 3+4: implement MCP server (search_kb, get_ticket_info, v.v.); MCP integration trong policy_tool worker; eval_trace.py (trace analysis, single vs multi comparison); chạy 15 test questions + grading questions; hoàn thiện 3 doc templates và group report |
 
 ---
 

@@ -1,16 +1,13 @@
 # Báo Cáo Nhóm — Lab Day 09: Multi-Agent Orchestration
 
-**Tên nhóm:** ___________  
+**Tên nhóm:** Nhóm 29 — E403  
 **Thành viên:**
-| Tên | Vai trò | Email |
-|-----|---------|-------|
-| ___ | Supervisor Owner | ___ |
-| ___ | Worker Owner | ___ |
-| ___ | MCP Owner | ___ |
-| ___ | Trace & Docs Owner | ___ |
+| Tên | Vai trò | Sprint |
+|-----|---------|--------|
+| Nguyễn Bình Thành | Supervisor Owner + Worker Owner | 1, 2 |
+| Hàn Quang Hiếu | MCP Owner + Trace & Docs Owner | 3, 4 |
 
-**Ngày nộp:** ___________  
-**Repo:** ___________  
+**Repo:** https://github.com/kain205/Nhom29-E403-day08  
 **Độ dài khuyến nghị:** 600–1000 từ
 
 ---
@@ -32,19 +29,25 @@
 
 **Hệ thống tổng quan:**
 
-_________________
+Hệ thống gồm 1 Supervisor và 3 Workers chạy tuần tự: `retrieval_worker` → `policy_tool_worker` (nếu cần) → `synthesis_worker`. Supervisor đọc task, quyết định route dựa vào keyword, ghi `route_reason` vào state. Mỗi worker nhận state, xử lý phần việc của mình, trả state về để worker tiếp theo dùng. Toàn bộ execution path được ghi vào trace JSON.
 
 **Routing logic cốt lõi:**
-> Mô tả logic supervisor dùng để quyết định route (keyword matching, LLM classifier, rule-based, v.v.)
 
-_________________
+Keyword-based (không dùng LLM). Priority order: `human_review > policy_tool_worker > retrieval_worker`.
+
+- `policy_keywords` ("hoàn tiền", "refund", "flash sale", "level 2/3", ...) → `policy_tool_worker`
+- `sla_keywords` ("p1", "sla", "ticket", "escalation", ...) → `retrieval_worker`
+- `err-xxx` không có keyword khác → `human_review`
+- Mặc định → `retrieval_worker`
+
+Khi route là `policy_tool_worker`: retrieval chạy trước để lấy context, rồi mới policy check.
 
 **MCP tools đã tích hợp:**
-> Liệt kê tools đã implement và 1 ví dụ trace có gọi MCP tool.
+> *(Sprint 3 — Hàn Quang Hiếu hoàn thiện)*
 
 - `search_kb`: ___________________
 - `get_ticket_info`: ___________________
-- ___________________: ___________________
+- `check_access_permission`: ___________________
 
 ---
 
@@ -131,10 +134,8 @@ _________________
 
 | Thành viên | Phần đã làm | Sprint |
 |------------|-------------|--------|
-| ___ | ___________________ | ___ |
-| ___ | ___________________ | ___ |
-| ___ | ___________________ | ___ |
-| ___ | ___________________ | ___ |
+| Nguyễn Bình Thành | graph.py (supervisor routing, state, worker wiring), workers/retrieval.py, workers/policy_tool.py, workers/synthesis.py, build_index.py, contracts update | 1, 2 |
+| Hàn Quang Hiếu | mcp_server.py, MCP integration trong policy_tool, eval_trace.py, docs templates, group report | 3, 4 |
 
 **Điều nhóm làm tốt:**
 
