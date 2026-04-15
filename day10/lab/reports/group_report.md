@@ -27,11 +27,26 @@
 
 **Tóm tắt luồng:**
 
-_________________
+Nguồn raw: `data/raw/policy_export_dirty.csv` (10 records, CSV mẫu có duplicate, thiếu ngày, doc_id lạ, xung đột version HR, chunk policy sai cửa sổ hoàn tiền).  
+Luồng: ingest raw → cleaning rules → expectation suite → embed Chroma (upsert + prune) → manifest + freshness check.  
+`run_id` xuất hiện ở dòng đầu log và được ghi vào `artifacts/manifests/manifest_<run-id>.json`.
+
+**Kết quả Sprint 1 (run_id=sprint1, 2026-04-15):**
+
+| Metric | Giá trị |
+|--------|---------|
+| raw_records | 10 |
+| cleaned_records | 6 |
+| quarantine_records | 4 |
+| embed_upsert count | 6 |
+| freshness_check | FAIL (age=119.5h, SLA=24h) |
+| manifest | `artifacts/manifests/manifest_sprint1.json` |
 
 **Lệnh chạy một dòng (copy từ README thực tế của nhóm):**
 
-_________________
+```bash
+python etl_pipeline.py run
+```
 
 ---
 
