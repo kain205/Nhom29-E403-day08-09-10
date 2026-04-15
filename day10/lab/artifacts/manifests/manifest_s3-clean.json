@@ -1,10 +1,10 @@
 {
   "run_id": "s3-clean",
-  "run_timestamp": "2026-04-15T08:02:20.498962+00:00",
+  "run_timestamp": "2026-04-15T09:14:13.813908+00:00",
   "raw_path": "data\\raw\\policy_export_dirty.csv",
-  "raw_records": 10,
+  "raw_records": 13,
   "cleaned_records": 6,
-  "quarantine_records": 4,
+  "quarantine_records": 7,
   "latest_exported_at": "2026-04-10T08:00:00",
   "no_refund_fix": false,
   "skipped_validate": false,
