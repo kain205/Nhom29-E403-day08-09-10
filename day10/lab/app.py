@@ -474,7 +474,7 @@ with tab3:
         no_short    = st.checkbox("Tắt: chunk_too_short check", value=False, key="inj_short")
         no_empty    = st.checkbox("Tắt: empty_strip check", value=False, key="inj_empty")
         skip_val    = st.checkbox("Skip validate (halt)", value=True, key="inj_skipval")
-        auto_restore = st.checkbox("Auto-restore DB sau khi eval xong", value=True, key="inj_restore")
+        auto_restore = st.checkbox("Auto-restore DB sau khi eval xong", value=False, key="inj_restore")
 
         if st.button("▶  Run Inject + Eval", key="s3_inject_btn", type="secondary"):
             with st.spinner("Pipeline inject…"):
