@@ -70,6 +70,9 @@ def clean_rows(
     rows: List[Dict[str, str]],
     *,
     apply_refund_window_fix: bool = True,
+    apply_future_date_check: bool = True,
+    apply_short_chunk_check: bool = True,
+    apply_empty_strip_check: bool = True,
 ) -> Tuple[List[Dict[str, Any]], List[Dict[str, Any]]]:
     """
     Trả về (cleaned, quarantine).
@@ -120,18 +123,18 @@ def clean_rows(
             continue
 
         # Rule mới 1: chunk_text toàn whitespace sau strip
-        if not text.strip():
+        if apply_empty_strip_check and not text.strip():
             quarantine.append({**raw, "reason": "empty_chunk_after_strip"})
             continue
 
         # Rule mới 2: effective_date nằm trong tương lai
-        if eff_norm and eff_norm > date.today().isoformat():
+        if apply_future_date_check and eff_norm and eff_norm > date.today().isoformat():
             quarantine.append({**raw, "reason": "future_effective_date",
                                "effective_date_normalized": eff_norm})
             continue
 
         # Rule mới 3: chunk_text quá ngắn, không có giá trị thông tin
-        if len(text.strip()) < MIN_CHUNK_LEN:
+        if apply_short_chunk_check and len(text.strip()) < MIN_CHUNK_LEN:
             quarantine.append({**raw, "reason": "chunk_too_short",
                                "chunk_len": len(text.strip())})
             continue
