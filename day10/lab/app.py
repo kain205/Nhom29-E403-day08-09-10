@@ -27,14 +27,85 @@ EVAL_DIR = ART / "eval"
 
 # ── Helpers ────────────────────────────────────────────────────────────────
 
-def _run_pipeline(run_id: str, *, no_refund_fix=False, skip_validate=False):
+def _run_pipeline(run_id: str, *, no_refund_fix=False, skip_validate=False,
+                  no_future_date_check=False, no_short_chunk_check=False,
+                  no_empty_strip_check=False):
     cmd = [sys.executable, "etl_pipeline.py", "run", "--run-id", run_id]
     if no_refund_fix:
         cmd.append("--no-refund-fix")
     if skip_validate:
         cmd.append("--skip-validate")
+    if no_future_date_check:
+        cmd.append("--no-future-date-check")
+    if no_short_chunk_check:
+        cmd.append("--no-short-chunk-check")
+    if no_empty_strip_check:
+        cmd.append("--no-empty-strip-check")
     r = subprocess.run(cmd, capture_output=True, text=True, cwd=str(LAB_DIR))
     return r.stdout + ("\n" + r.stderr if r.stderr.strip() else ""), r.returncode
+
+
+def _load_questions() -> dict:
+    """Load test_questions.json → dict keyed by id."""
+    p = LAB_DIR / "data" / "test_questions.json"
+    if not p.is_file():
+        return {}
+    try:
+        qs = json.loads(p.read_text("utf-8"))
+        return {q["id"]: q for q in qs}
+    except Exception:
+        return {}
+
+
+def _rich_eval_table(eval_path: Optional[Path]) -> None:
+    """Bảng eval với cột expected + forbidden + kết quả màu."""
+    df = _load_csv(eval_path)
+    if df is None:
+        st.info("Chưa có kết quả eval.")
+        return
+
+    questions = _load_questions()
+    rows = []
+    for _, r in df.iterrows():
+        qid = r.get("question_id", "")
+        q = questions.get(qid, {})
+        must = ", ".join(q.get("must_contain_any", []))
+        forbidden = ", ".join(q.get("must_not_contain", [])) or "—"
+        ok = r.get("contains_expected", "")
+        bad = r.get("hits_forbidden", "")
+        top1_ok = r.get("top1_doc_expected", "")
+
+        # Overall pass/fail
+        passed = (ok == "yes") and (bad == "no")
+        rows.append({
+            "question_id": qid,
+            "must contain": must,
+            "forbidden": forbidden,
+            "contains_expected": ok,
+            "hits_forbidden": bad,
+            "top1_doc_expected": top1_ok if top1_ok else "—",
+            "top1_doc_id": r.get("top1_doc_id", ""),
+            "result": "PASS" if passed else "FAIL",
+        })
+
+    result_df = pd.DataFrame(rows)
+
+    def _color(row):
+        if row["result"] == "PASS":
+            return ["background-color: #e8f5e9"] * len(row)
+        return ["background-color: #fde8e8"] * len(row)
+
+    st.dataframe(
+        result_df.style.apply(_color, axis=1),
+        use_container_width=True,
+        hide_index=True,
+        column_config={
+            "result": st.column_config.TextColumn("result", width="small"),
+            "contains_expected": st.column_config.TextColumn("contains_expected", width="small"),
+            "hits_forbidden": st.column_config.TextColumn("hits_forbidden", width="small"),
+            "top1_doc_expected": st.column_config.TextColumn("top1_doc_expected", width="small"),
+        },
+    )
 
 
 def _run_eval(out_name: str):
@@ -141,6 +212,50 @@ def _freshness_banner(status: str, detail: dict) -> None:
         st.warning(msg + "  _(file mẫu cũ sẵn — bình thường trong lab)_")
 
 
+def _decision_table(raw_path: Path, quar_path: Optional[Path]) -> None:
+    """Bảng tổng hợp: mỗi raw record + status Kept/Quarantine + reason."""
+    df_raw = _load_csv(raw_path)
+    if df_raw is None:
+        return
+
+    # Build lookup: chunk_id → reason từ quarantine CSV
+    quar_map: dict = {}
+    if quar_path and quar_path.is_file():
+        df_q = _load_csv(quar_path)
+        if df_q is not None and "chunk_id" in df_q.columns:
+            for _, row in df_q.iterrows():
+                quar_map[str(row["chunk_id"])] = row.get("reason", "quarantined")
+
+    statuses, reasons = [], []
+    for _, row in df_raw.iterrows():
+        cid = str(row.get("chunk_id", ""))
+        if cid in quar_map:
+            statuses.append("Quarantine")
+            reasons.append(quar_map[cid])
+        else:
+            statuses.append("Kept")
+            reasons.append("")
+
+    df_raw = df_raw.copy()
+    df_raw.insert(0, "status", statuses)
+    df_raw.insert(1, "reason", reasons)
+
+    def _row_color(row):
+        if row["status"] == "Quarantine":
+            return ["background-color: #fde8e8"] * len(row)
+        return ["background-color: #e8f5e9"] * len(row)
+
+    st.dataframe(
+        df_raw.style.apply(_row_color, axis=1),
+        use_container_width=True,
+        hide_index=True,
+        column_config={
+            "status": st.column_config.TextColumn("status", width="small"),
+            "reason": st.column_config.TextColumn("reason", width="medium"),
+        },
+    )
+
+
 def _show_expectations(stdout: str) -> None:
     exps = _parse_expectations(stdout)
     if not exps:
@@ -208,31 +323,36 @@ with tab1:
             _freshness_banner(*fresh)
 
         st.divider()
-
-        # Three-column table: Raw | Cleaned | Quarantine
         safe = rid_used.replace(":", "-")
-        c_raw, c_clean, c_quar = st.columns(3)
+        quar_path = QUAR_DIR / f"quarantine_{safe}.csv"
 
-        with c_raw:
-            st.markdown(f"**Raw CSV — {man.get('raw_records', '?')} records**")
-            df = _load_csv(RAW_CSV)
-            if df is not None:
-                st.dataframe(df, use_container_width=True, height=300, hide_index=True)
+        # Decision View — toàn bộ raw records + status màu
+        st.markdown(
+            f"**Decision View — {man.get('raw_records','?')} records**  "
+            f"&nbsp; 🟢 Kept: {man.get('cleaned_records','?')}  "
+            f"&nbsp; 🔴 Quarantine: {man.get('quarantine_records','?')}"
+        )
+        _decision_table(RAW_CSV, quar_path)
+
+        st.divider()
+
+        # Chi tiết Cleaned + Quarantine
+        c_clean, c_quar = st.columns(2)
 
         with c_clean:
             st.markdown(f"**Cleaned — {man.get('cleaned_records', '?')} records**")
             df = _load_csv(CLEAN_DIR / f"cleaned_{safe}.csv")
             if df is not None:
-                st.dataframe(df, use_container_width=True, height=300, hide_index=True)
+                st.dataframe(df, use_container_width=True, height=280, hide_index=True)
 
         with c_quar:
             st.markdown(f"**Quarantine — {man.get('quarantine_records', '?')} records**")
-            df = _load_csv(QUAR_DIR / f"quarantine_{safe}.csv")
+            df = _load_csv(quar_path)
             if df is not None:
                 show_cols = [c for c in ["chunk_id", "doc_id", "chunk_text", "reason"]
                              if c in df.columns]
                 st.dataframe(df[show_cols] if show_cols else df,
-                             use_container_width=True, height=300, hide_index=True)
+                             use_container_width=True, height=280, hide_index=True)
 
         if stdout:
             st.divider()
@@ -317,18 +437,13 @@ with tab2:
 with tab3:
     st.subheader("Sprint 3 — Inject Corruption & Before/After")
     st.markdown("Chạy 2 kịch bản → so sánh eval retrieval để chứng minh pipeline quan trọng.")
-    st.warning(
-        "Inject sẽ **ghi đè vector store**. "
-        "Sau khi demo nhớ nhấn **Restore** để đưa DB về trạng thái clean.",
-        icon="⚠️",
-    )
 
     c_left, c_right = st.columns(2)
 
     # ---- Clean side ----
     with c_left:
         st.markdown("### Clean pipeline")
-        st.caption("refund fix ON · validate ON")
+        st.caption("Tất cả rule ON · validate ON")
         if st.button("▶  Run Clean + Eval", key="s3_clean_btn", type="primary"):
             with st.spinner("Pipeline clean…"):
                 stdout_c, rc_c = _run_pipeline("s3-clean")
@@ -347,32 +462,45 @@ with tab3:
                 cc1, cc2 = st.columns(2)
                 cc1.metric("Cleaned", man.get("cleaned_records"))
                 cc2.metric("Quarantine", man.get("quarantine_records"))
-            df_eval = _load_csv(st.session_state.get("s3_clean_eval"))
-            if df_eval is not None:
-                st.markdown("**Eval — retrieval results**")
-                show = [c for c in ["question_id", "contains_expected",
-                                    "hits_forbidden", "top1_doc_id"] if c in df_eval.columns]
-                st.dataframe(df_eval[show], use_container_width=True, hide_index=True)
+            st.markdown("**Eval**")
+            _rich_eval_table(st.session_state.get("s3_clean_eval"))
 
     # ---- Inject side ----
     with c_right:
-        st.markdown("### Inject (bad data)")
-        st.caption("--no-refund-fix  --skip-validate")
+        st.markdown("### Inject — chọn rule muốn tắt")
+
+        no_refund   = st.checkbox("Tắt: refund 14→7 fix", value=True,  key="inj_refund")
+        no_future   = st.checkbox("Tắt: future_date check", value=False, key="inj_future")
+        no_short    = st.checkbox("Tắt: chunk_too_short check", value=False, key="inj_short")
+        no_empty    = st.checkbox("Tắt: empty_strip check", value=False, key="inj_empty")
+        skip_val    = st.checkbox("Skip validate (halt)", value=True, key="inj_skipval")
+        auto_restore = st.checkbox("Auto-restore DB sau khi eval xong", value=True, key="inj_restore")
+
         if st.button("▶  Run Inject + Eval", key="s3_inject_btn", type="secondary"):
             with st.spinner("Pipeline inject…"):
-                stdout_i, rc_i = _run_pipeline("s3-inject",
-                                               no_refund_fix=True, skip_validate=True)
+                stdout_i, rc_i = _run_pipeline(
+                    "s3-inject",
+                    no_refund_fix=no_refund,
+                    skip_validate=skip_val,
+                    no_future_date_check=no_future,
+                    no_short_chunk_check=no_short,
+                    no_empty_strip_check=no_empty,
+                )
             with st.spinner("Eval retrieval…"):
                 _, _, eval_path_i = _run_eval("s3_inject_eval.csv")
             st.session_state.update(
                 s3_inject_stdout=stdout_i, s3_inject_rc=rc_i,
                 s3_inject_eval=eval_path_i,
             )
+            if auto_restore:
+                with st.spinner("Auto-restoring DB…"):
+                    _run_pipeline("s3-restore")
+                st.session_state["s3_restored"] = True
 
         if "s3_inject_stdout" in st.session_state:
             si = st.session_state["s3_inject_stdout"]
             if "PIPELINE_OK" in si:
-                st.success("Pipeline ran (validate skipped)")
+                st.success("Pipeline ran" + (" · DB restored" if st.session_state.get("s3_restored") else " · DB còn dirty"))
             elif "PIPELINE_HALT" in si:
                 st.error("PIPELINE_HALT")
             man = _load_manifest("s3-inject")
@@ -380,12 +508,17 @@ with tab3:
                 cc1, cc2 = st.columns(2)
                 cc1.metric("Cleaned", man.get("cleaned_records"))
                 cc2.metric("Quarantine", man.get("quarantine_records"))
-            df_eval = _load_csv(st.session_state.get("s3_inject_eval"))
-            if df_eval is not None:
-                st.markdown("**Eval — retrieval results**")
-                show = [c for c in ["question_id", "contains_expected",
-                                    "hits_forbidden", "top1_doc_id"] if c in df_eval.columns]
-                st.dataframe(df_eval[show], use_container_width=True, hide_index=True)
+            st.markdown("**Eval**")
+            _rich_eval_table(st.session_state.get("s3_inject_eval"))
+
+        # Manual restore nếu không auto
+        if "s3_inject_stdout" in st.session_state and not st.session_state.get("s3_restored"):
+            st.warning("DB đang ở trạng thái dirty.", icon="⚠️")
+            if st.button("↺  Restore DB thủ công", key="s3_restore_btn"):
+                with st.spinner("Restoring…"):
+                    _run_pipeline("s3-restore")
+                st.session_state["s3_restored"] = True
+                st.success("DB restored.")
 
     # ---- Before vs After comparison ----
     df_c = _load_csv(st.session_state.get("s3_clean_eval"))
@@ -394,25 +527,12 @@ with tab3:
     if df_c is not None and df_i is not None:
         st.divider()
         st.markdown("### Before vs After — so sánh trực tiếp")
-
         left = df_c[["question_id", "question", "contains_expected", "hits_forbidden"]].rename(
             columns={"contains_expected": "clean_ok", "hits_forbidden": "clean_bad"})
         right = df_i[["question_id", "contains_expected", "hits_forbidden"]].rename(
             columns={"contains_expected": "inject_ok", "hits_forbidden": "inject_bad"})
         comp = left.merge(right, on="question_id")
         st.dataframe(comp, use_container_width=True, hide_index=True)
-
-        # Restore button
-        st.divider()
-        if st.button("↺  Restore DB về trạng thái clean", key="s3_restore_btn"):
-            with st.spinner("Restoring…"):
-                stdout_r, rc_r = _run_pipeline("s3-restore")
-            if "PIPELINE_OK" in stdout_r:
-                st.success("DB đã restore về clean.")
-            else:
-                st.error("Restore failed — xem log bên dưới.")
-            with st.expander("Restore log"):
-                st.code(stdout_r, language="text")
 
     # Logs
     if "s3_clean_stdout" in st.session_state or "s3_inject_stdout" in st.session_state:

@@ -69,6 +69,9 @@ def cmd_run(args: argparse.Namespace) -> int:
     cleaned, quarantine = clean_rows(
         rows,
         apply_refund_window_fix=not args.no_refund_fix,
+        apply_future_date_check=not args.no_future_date_check,
+        apply_short_chunk_check=not args.no_short_chunk_check,
+        apply_empty_strip_check=not args.no_empty_strip_check,
     )
     cleaned_path = CLEAN_DIR / f"cleaned_{run_id.replace(':', '-')}.csv"
     quar_path = QUAR_DIR / f"quarantine_{run_id.replace(':', '-')}.csv"
@@ -205,6 +208,12 @@ def main() -> int:
         action="store_true",
         help="Vẫn embed khi expectation halt (chỉ phục vụ demo có chủ đích).",
     )
+    p_run.add_argument("--no-future-date-check", action="store_true",
+                       help="Bỏ rule quarantine ngày hiệu lực trong tương lai.")
+    p_run.add_argument("--no-short-chunk-check", action="store_true",
+                       help="Bỏ rule quarantine chunk quá ngắn (<20 ký tự).")
+    p_run.add_argument("--no-empty-strip-check", action="store_true",
+                       help="Bỏ rule quarantine chunk toàn whitespace sau strip.")
     p_run.set_defaults(func=cmd_run)
 
     p_fr = sub.add_parser("freshness", help="Đọc manifest và kiểm tra SLA freshness")

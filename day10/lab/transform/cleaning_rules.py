@@ -23,6 +23,9 @@ from datetime import date
 from pathlib import Path
 from typing import Any, Dict, List, Tuple
 
+# Rule mới 3: chunk_text tối thiểu sau strip (ký tự)
+MIN_CHUNK_LEN = 20
+
 # Khớp export hợp lệ trong lab (mở rộng khi nhóm thêm doc mới — phải đồng bộ contract).
 ALLOWED_DOC_IDS = frozenset(
     {
@@ -80,6 +83,9 @@ def clean_rows(
     rows: List[Dict[str, str]],
     *,
     apply_refund_window_fix: bool = True,
+    apply_future_date_check: bool = True,
+    apply_short_chunk_check: bool = True,
+    apply_empty_strip_check: bool = True,
 ) -> Tuple[List[Dict[str, Any]], List[Dict[str, Any]]]:
     """
     Trả về (cleaned, quarantine).
@@ -133,6 +139,23 @@ def clean_rows(
 
         if not text:
             quarantine.append({**raw, "reason": "missing_chunk_text"})
+            continue
+
+        # Rule mới 1: chunk_text toàn whitespace sau strip
+        if apply_empty_strip_check and not text.strip():
+            quarantine.append({**raw, "reason": "empty_chunk_after_strip"})
+            continue
+
+        # Rule mới 2: effective_date nằm trong tương lai
+        if apply_future_date_check and eff_norm and eff_norm > date.today().isoformat():
+            quarantine.append({**raw, "reason": "future_effective_date",
+                               "effective_date_normalized": eff_norm})
+            continue
+
+        # Rule mới 3: chunk_text quá ngắn, không có giá trị thông tin
+        if apply_short_chunk_check and len(text.strip()) < MIN_CHUNK_LEN:
+            quarantine.append({**raw, "reason": "chunk_too_short",
+                               "chunk_len": len(text.strip())})
             continue
 
         key = _norm_text(text)
