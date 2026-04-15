@@ -35,6 +35,7 @@ Vector store và agent Day 09 chỉ ổn nếu **pipeline ingest → clean → v
 ```
 lab/
 ├── etl_pipeline.py           # Sprint 1–2: run ingest→clean→validate→embed
+├── app.py                    # Demo UI (Streamlit) — 4 tab × 4 sprint
 ├── eval_retrieval.py         # Sprint 3–4: before/after retrieval (CSV)
 ├── grading_run.py            # JSONL cho câu grading (public muộn — xem SCORING)
 ├── instructor_quick_check.py # GV: sanity artifact grading/manifest (tuỳ chọn)
@@ -120,6 +121,17 @@ python etl_pipeline.py run --run-id inject-bad --no-refund-fix --skip-validate
 python eval_retrieval.py --out artifacts/eval/after_inject_bad.csv
 # So sánh với file eval sau khi chạy lại pipeline chuẩn (không flag inject)
 ```
+
+**Demo UI (tuỳ chọn):**
+
+```bash
+pip install streamlit
+streamlit run app.py
+```
+
+Mở `http://localhost:8501` — 4 tab: Sprint 1 (ingest + decision table), Sprint 2 (metric_impact), Sprint 3 (inject selector + eval), Sprint 4 (freshness monitor).
+
+---
 
 **Grading (sau 17:00):**
 

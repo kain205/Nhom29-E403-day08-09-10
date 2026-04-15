@@ -109,7 +109,8 @@ manifest: artifacts/manifests/manifest_s3-inject.json (no_refund_fix=true)
 
 ## 4. Freshness & monitoring
 
-**Người thực hiện Sprint 4:** Nguyễn Bình Thành
+**Người thực hiện Sprint 4:** Nguyễn Bình Thành  
+**Thêm:** Demo UI (`app.py` — Streamlit)
 
 **SLA được chọn:** 24 giờ (mặc định trong `monitoring/freshness_check.py`, có thể override qua `FRESHNESS_SLA_HOURS`).
 
@@ -127,6 +128,12 @@ manifest: artifacts/manifests/manifest_s3-inject.json (no_refund_fix=true)
 **Lệnh kiểm tra:**
 ```bash
 python etl_pipeline.py freshness --manifest artifacts/manifests/manifest_sprint2.json
+```
+
+**Demo UI** (`app.py` — Nguyễn Bình Thành):  
+Streamlit app 4 tab demo toàn bộ lab: chạy pipeline, xem decision table row-by-row (Kept/Quarantine), bảng eval PASS/FAIL, selector inject rule cho Sprint 3.
+```bash
+streamlit run app.py
 ```
 
 ---

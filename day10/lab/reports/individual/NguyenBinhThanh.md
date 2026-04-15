@@ -13,6 +13,7 @@
 - `quality/expectations.py` — toàn bộ expectation suite E1–E8, hàm `run_expectations()`, logic phân biệt `warn` vs `halt`
 - `monitoring/freshness_check.py` — hàm `check_manifest_freshness()`, parse ISO timestamp, tính `age_hours`
 - `etl_pipeline.py` — phần `cmd_embed_internal()`: ChromaDB upsert, prune vector cũ (`embed_prune_removed`), ghi manifest
+- `app.py` — Streamlit demo UI: 4 tab tương ứng 4 sprint, chạy pipeline qua subprocess, hiển thị decision table (Kept/Quarantine), bảng eval kết quả, selector inject rule
 - `docs/pipeline_architecture.md`, `docs/data_contract.md`, `docs/runbook.md`, `docs/quality_report.md`
 
 **Kết nối với thành viên khác:**
@@ -66,6 +67,26 @@ q_leave_version | contains_expected=yes | hits_forbidden=no | top1_doc_expected=
 
 ---
 
-## 5. Cải tiến tiếp theo
+## 5. Demo UI (Sprint 4 — thêm)
+
+Tạo `app.py` — Streamlit single-file app để demo toàn bộ lab trực tiếp trên trình duyệt. Thiết kế 4 tab:
+
+| Tab | Nội dung |
+|-----|----------|
+| Sprint 1 — Ingest | Chạy pipeline + bảng decision row-by-row (màu xanh=Kept, đỏ=Quarantine + reason) |
+| Sprint 2 — Clean | Bảng metric_impact so sánh baseline vs sprint2 |
+| Sprint 3 — Inject | Checkbox chọn rule nào bị tắt (`--no-refund-fix`, `--skip-validate`…) + bảng eval PASS/FAIL |
+| Sprint 4 — Monitoring | Freshness status từ manifest, link artifact |
+
+Quyết định kỹ thuật: dùng `subprocess.run()` để gọi `etl_pipeline.py` thay vì import trực tiếp — tránh side effect ChromaDB bị re-init khi Streamlit hot-reload. Auto-restore mặc định `False` để người demo có thể quan sát trạng thái inject trước khi restore.
+
+**Chạy UI:**
+```bash
+streamlit run app.py
+```
+
+---
+
+## 6. Cải tiến tiếp theo
 
 Nếu có thêm 2 giờ: đo freshness tại **2 boundary** — `ingest` (khi `load_raw_csv` đọc file, ghi `ingest_timestamp` vào manifest) và `publish` (hiện tại). Hai boundary cho phép phân biệt "data cũ từ nguồn" vs "pipeline chạy chậm" — hai nguyên nhân khác nhau cần xử lý khác nhau. Hiện tại chỉ có `publish` boundary nên không phân biệt được hai trường hợp này.
