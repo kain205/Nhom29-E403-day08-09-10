@@ -28,4 +28,4 @@
 | **Grading** | **87 / 96 raw → ~27.2 / 30 điểm** (judge: `claude-sonnet-4-6`) |
 | **Điểm mạnh** | gq02, gq07 abstain đúng — không hallucinate khi thiếu tài liệu |
 | **Điểm yếu** | gq01, gq09 thiếu kết luận "escalate → Senior Engineer" trong SLA flow |
-| **Docs** | [Lab README](day09/lab/README.md) · [SCORING](day09/lab/SCORING.md) · [Group Report](day09/lab/reports/group_report.md) · [Grading log](day09/lab/artifacts/grading_run.jsonl) |
+| **Docs** | [Lab README](day09/lab/README.md) · [Group Report](day09/lab/reports/group_report.md) · [IndividualReport1](day09/lab/reports/individual/NguyenBinhThanh.md) · [IndividualReport2](day09/lab/reports/individual/han_quang_hieu.md) · [Grading log](day09/lab/artifacts/grading_run.jsonl) |
