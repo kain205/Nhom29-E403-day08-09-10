@@ -3,6 +3,15 @@ Cleaning rules — raw export → cleaned rows + quarantine.
 
 Baseline gồm các failure mode mở rộng (allowlist doc_id, parse ngày, HR stale version).
 Sinh viên thêm ≥3 rule mới: mỗi rule phải ghi `metric_impact` (xem README — chống trivial).
+
+New rules (Sprint 2):
+  R7) strip_cleaning_annotation   — xoá tag [cleaned: ...] bị lọt vào raw export từ lần chạy trước.
+                                    metric_impact: chunk_text thay đổi → chunk_id mới → tránh vector cũ.
+  R8) quarantine_future_effective_date — quarantine chunk có effective_date > TODAY (pre-release policy leak).
+                                    metric_impact: inject 1 row ngày 2099 → quarantine_records +1.
+  R9) quarantine_sla_missing_time_unit — quarantine chunk sla_p1_2026 không chứa đơn vị thời gian
+                                    (phút/giờ/minute/hour). metric_impact: inject SLA chunk thiếu đơn vị
+                                    → quarantine_records +1; bình thường không ảnh hưởng bộ mẫu.
 """
 
 from __future__ import annotations
@@ -10,6 +19,7 @@ from __future__ import annotations
 import csv
 import hashlib
 import re
+from datetime import date
 from pathlib import Path
 from typing import Any, Dict, List, Tuple
 
@@ -25,6 +35,10 @@ ALLOWED_DOC_IDS = frozenset(
 
 _ISO_DATE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
 _DMY_SLASH = re.compile(r"^(\d{2})/(\d{2})/(\d{4})$")
+_CLEANING_TAG = re.compile(r"\s*\[cleaned:[^\]]*\]", re.IGNORECASE)
+_EXPORTED_AT_RE = re.compile(r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}")  # ISO datetime prefix
+
+TODAY_ISO: str = date.today().isoformat()  # e.g. "2026-04-15"
 
 
 def _norm_text(s: str) -> str:
@@ -77,6 +91,12 @@ def clean_rows(
     4) Quarantine: chunk_text rỗng hoặc effective_date rỗng sau chuẩn hoá.
     5) Loại trùng nội dung chunk_text (giữ bản đầu).
     6) Fix stale refund: policy_refund_v4 chứa '14 ngày làm việc' → 7 ngày.
+
+    Sprint 2 — rule mới:
+    7) Strip annotation tag [cleaned: ...] lọt vào raw (R7).
+    8) Quarantine chunk có effective_date > TODAY (future-dated / pre-release leak) (R8).
+    9) Quarantine chunk có exported_at rỗng hoặc không đúng định dạng ISO datetime (R9).
+       metric_impact: thiếu exported_at → manifest.latest_exported_at sai → freshness check sai.
     """
     quarantine: List[Dict[str, Any]] = []
     seen_text: set[str] = set()
@@ -129,6 +149,37 @@ def clean_rows(
                     "7 ngày làm việc",
                 )
                 fixed_text += " [cleaned: stale_refund_window]"
+
+        # R7: Strip annotation tags that leaked from a previous cleaned export into raw.
+        # metric_impact: chunk_text changes → new chunk_id → old vector pruned on next embed.
+        fixed_text = _CLEANING_TAG.sub("", fixed_text).strip()
+
+        # R8: Quarantine future-dated chunks (effective_date > today = pre-release policy leak).
+        # metric_impact: inject a row with effective_date=2099-01-01 → quarantine_records +1.
+        if eff_norm > TODAY_ISO:
+            quarantine.append(
+                {
+                    **raw,
+                    "reason": "future_effective_date",
+                    "effective_date_normalized": eff_norm,
+                    "today": TODAY_ISO,
+                }
+            )
+            continue
+
+        # R9: Quarantine chunks with missing or malformed exported_at timestamp.
+        # metric_impact: without a valid exported_at, manifest.latest_exported_at is wrong
+        # → freshness check reports incorrect data age. Inject a row with exported_at=""
+        # → quarantine_records +1.
+        if not _EXPORTED_AT_RE.match(exported_at):
+            quarantine.append(
+                {
+                    **raw,
+                    "reason": "invalid_exported_at",
+                    "exported_at_raw": exported_at,
+                }
+            )
+            continue
 
         seq += 1
         cleaned.append(

@@ -31,7 +31,7 @@ Nguồn raw: `data/raw/policy_export_dirty.csv` (10 records, CSV mẫu có dupli
 Luồng: ingest raw → cleaning rules → expectation suite → embed Chroma (upsert + prune) → manifest + freshness check.  
 `run_id` xuất hiện ở dòng đầu log và được ghi vào `artifacts/manifests/manifest_<run-id>.json`.
 
-**Kết quả Sprint 1 (run_id=sprint1, 2026-04-15):**
+**Kết quả Sprint 2 (run_id=sprint2, 2026-04-15):**
 
 | Metric | Giá trị |
 |--------|---------|
@@ -39,8 +39,9 @@ Luồng: ingest raw → cleaning rules → expectation suite → embed Chroma (u
 | cleaned_records | 6 |
 | quarantine_records | 4 |
 | embed_upsert count | 6 |
-| freshness_check | FAIL (age=119.5h, SLA=24h) |
-| manifest | `artifacts/manifests/manifest_sprint1.json` |
+| expectations passed | 8/8 (E1–E8) |
+| freshness_check | FAIL (age=120.6h, SLA=24h — data snapshot cũ, expected) |
+| manifest | `artifacts/manifests/manifest_sprint2.json` |
 
 **Lệnh chạy một dòng (copy từ README thực tế của nhóm):**
 
@@ -56,17 +57,29 @@ python etl_pipeline.py run
 
 ### 2a. Bảng metric_impact (bắt buộc — chống trivial)
 
-| Rule / Expectation mới (tên ngắn) | Trước (số liệu) | Sau / khi inject (số liệu) | Chứng cứ (log / CSV / commit) |
-|-----------------------------------|------------------|-----------------------------|-------------------------------|
-| … | … | … | … |
+| Rule / Expectation mới (tên ngắn) | Loại | Severity | Trước inject | Sau inject | Chứng cứ |
+|-----------------------------------|------|----------|--------------|------------|-----------|
+| R7: `strip_cleaning_annotation` | cleaning rule | — | chunk_text chứa `[cleaned: stale_refund_window]` trong raw → chunk_id thay đổi sau strip | chunk_text sạch, chunk_id mới, vector cũ bị prune | `artifacts/cleaned/cleaned_sprint2.csv` — cột chunk_text không còn tag |
+| R8: `quarantine_future_effective_date` | cleaning rule | — | inject row `effective_date=2099-01-01` → quarantine_records tăng từ 4 → 5 | quarantine_records=5, chunk không vào index | `artifacts/quarantine/quarantine_sprint2_inject.csv` reason=`future_effective_date` |
+| R9: `quarantine_invalid_exported_at` | cleaning rule | — | inject row với `exported_at=""` → quarantine_records tăng từ 4 → 5; manifest.latest_exported_at không bị sai | quarantine_records=5 | `artifacts/quarantine/quarantine_sprint2_inject.csv` reason=`invalid_exported_at` |
+| E7: `no_future_effective_date` | expectation | **halt** | inject future-dated row + skip R8 → E7 FAIL → pipeline halt | sau R8 fix: E7 OK | log sprint2: `expectation[no_future_effective_date] OK` |
+| E8: `no_invalid_exported_at` | expectation | warn | inject row `exported_at=""` + skip R9 → E8 FAIL (warn, không halt) | sau R9 fix: E8 OK | log sprint2: `expectation[no_invalid_exported_at] OK` |
 
 **Rule chính (baseline + mở rộng):**
 
-- …
+- R1: Quarantine `doc_id` không thuộc allowlist → row 9 (`legacy_catalog_xyz_zzz`) bị quarantine
+- R2: Chuẩn hoá `effective_date` DD/MM/YYYY → ISO; row 10 (`01/02/2026`) được parse thành `2026-02-01`
+- R3: Quarantine HR stale (`effective_date < 2026-01-01`) → row 7 bị quarantine
+- R4: Quarantine `chunk_text` rỗng → row 5 bị quarantine
+- R5: Dedupe `chunk_text` → row 2 (trùng row 1) bị quarantine
+- R6: Fix refund 14→7 ngày → row 3 được sửa + tag `[cleaned: stale_refund_window]`
+- **R7 (mới)**: Strip tag `[cleaned: ...]` lọt vào raw từ lần chạy trước → chunk_text sạch
+- **R8 (mới)**: Quarantine `effective_date > today` → chặn policy chưa phát hành
+- **R9 (mới)**: Quarantine chunk có `exported_at` rỗng hoặc sai format → manifest `latest_exported_at` không bị nhiễm bởi timestamp rác
 
-**Ví dụ 1 lần expectation fail (nếu có) và cách xử lý:**
+**Ví dụ 1 lần expectation fail và cách xử lý:**
 
-_________________
+Khi chạy `--no-refund-fix --skip-validate` (Sprint 3 inject), expectation E3 `refund_no_stale_14d_window` FAIL vì chunk vẫn chứa "14 ngày làm việc". Pipeline in `PIPELINE_HALT` nhưng do `--skip-validate` nên tiếp tục embed — đây là hành vi có chủ đích để tạo bằng chứng before/after.
 
 ---
 
